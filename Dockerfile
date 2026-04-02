@@ -9,5 +9,5 @@ FROM node:23-alpine
 WORKDIR /app
 RUN npm install -g serve
 COPY --from=build /app/dist/frontend/browser ./dist
-EXPOSE 3000
-CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000}"]
+EXPOSE 8080
+CMD ["sh", "-c", "serve -s dist -l ${PORT:-8080}"]
