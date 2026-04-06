@@ -77,13 +77,6 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
                 </div>
               </div>
               <div class="job-card-right">
-                <div class="job-count-badge">
-                  @if (c.jobCount > 0) {
-                    <span class="badge-open">{{ c.jobCount }} open</span>
-                  } @else {
-                    <span class="badge-hiring">Hiring</span>
-                  }
-                </div>
                 <span class="job-apply-btn">Apply →</span>
               </div>
             </a>
