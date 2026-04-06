@@ -73,7 +73,6 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
                   <div class="job-company">{{ c.name }}</div>
                   <div class="job-meta">
                     <span class="job-location">📍 {{ location(c) }}</span>
-                    <span class="job-emp">💼 {{ c.jobCount > 0 ? c.jobCount + ' jobs available' : 'Hiring' }}</span>
                   </div>
                 </div>
               </div>
