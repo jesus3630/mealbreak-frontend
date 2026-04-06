@@ -105,9 +105,6 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
                   <div class="job-company">{{ c.name }}</div>
                   <div class="job-meta">
                     <span class="job-location">📍 {{ location(c) }}</span>
-                    @if (c.employees && c.employees !== '0') {
-                      <span class="job-emp">👤 {{ c.employees }} emp</span>
-                    }
                     <span class="source-badge" [class]="sourceBadgeClass(c)">{{ sourceBadgeLabel(c) }}</span>
                   </div>
                 </div>
