@@ -20,6 +20,7 @@ export interface Company {
 export interface CompaniesResponse {
   data: Company[];
   total: number;
+  totalJobs: number;
   page: number;
   limit: number;
   pages: number;

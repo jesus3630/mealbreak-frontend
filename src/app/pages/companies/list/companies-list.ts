@@ -14,7 +14,12 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
     <!-- HERO -->
     <div class="dir-hero">
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;">
-        <div class="hero-count">{{ total() > 0 ? (total() | number) + (activeTab() === 'jobs' ? ' Open Positions' : ' Guard Companies') : 'Loading...' }}</div>
+        @if (activeTab() === 'jobs') {
+          <div class="hero-count">{{ totalJobs() > 0 ? (totalJobs() | number) + ' Total Openings' : 'Loading...' }}</div>
+          <div class="hero-count secondary">{{ total() > 0 ? (total() | number) + ' Companies Hiring' : '' }}</div>
+        } @else {
+          <div class="hero-count">{{ total() > 0 ? (total() | number) + ' Guard Companies' : 'Loading...' }}</div>
+        }
       </div>
       <h1>{{ activeTab() === 'jobs' ? 'Security Guard Jobs' : 'Guard Company Directory' }}</h1>
       <p>{{ activeTab() === 'jobs' ? 'Browse open positions at licensed security guard companies near you.' : 'Browse licensed guard and patrol companies. Find open positions directly on their careers pages.' }}</p>
@@ -23,11 +28,17 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
           <span class="search-icon">🔍</span>
           <input type="text" [placeholder]="activeTab() === 'jobs' ? 'Search jobs or companies...' : 'Search companies...'" [(ngModel)]="search" (ngModelChange)="onSearch()" />
         </div>
-        <select [(ngModel)]="stateFilter" (ngModelChange)="onSearch()">
+        <select [(ngModel)]="stateFilter" (ngModelChange)="onStateChange()">
           <option value="">All States</option>
           @for (s of states(); track s) { <option [value]="s">{{ s }}</option> }
         </select>
-        <input class="zip-input" type="text" placeholder="Filter by ZIP..." [(ngModel)]="zipFilter" (ngModelChange)="onSearch()" />
+        @if (stateFilter && cities().length > 0) {
+          <select [(ngModel)]="cityFilter" (ngModelChange)="onSearch()">
+            <option value="">All Cities</option>
+            @for (c of cities(); track c) { <option [value]="c">{{ c }}</option> }
+          </select>
+        }
+        <input class="zip-input" type="text" placeholder="ZIP code..." [(ngModel)]="zipFilter" (ngModelChange)="onSearch()" />
       </div>
     </div>
 
@@ -47,13 +58,29 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
     <div class="main">
       <div class="results-row">
         @if (!loading()) {
-          <span class="results-count">Showing <strong>{{ companies().length }}</strong> of <strong>{{ total() | number }}</strong> {{ activeTab() === 'jobs' ? 'companies with open jobs' : 'companies' }}</span>
+          @if (activeTab() === 'jobs') {
+            <span class="results-count">
+              <strong>{{ totalJobs() | number }}</strong> openings at
+              <strong>{{ total() | number }}</strong> companies
+            </span>
+            <div class="sort-wrap">
+              <label class="sort-label">Sort:</label>
+              <select class="sort-select" [(ngModel)]="sortOrder" (ngModelChange)="onSearch()">
+                <option value="jobs">Most Jobs</option>
+                <option value="az">A – Z</option>
+              </select>
+            </div>
+          } @else {
+            <span class="results-count">Showing <strong>{{ companies().length }}</strong> of <strong>{{ total() | number }}</strong> companies</span>
+          }
         }
       </div>
 
       @if (loading()) {
-        <div class="companies-grid">
-          @for (i of skeleton; track i) { <div class="skeleton-card" [class.job-skeleton]="activeTab()==='jobs'"></div> }
+        <div class="jobs-list">
+          @for (i of skeleton; track i) {
+            <div class="skeleton-card" [class.job-skeleton]="activeTab()==='jobs'"></div>
+          }
         </div>
       } @else if (companies().length === 0) {
         <div class="empty-state">
@@ -69,14 +96,26 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
               <div class="job-card-left">
                 <div class="card-logo" [style.background]="logoColor(c.name)">{{ initials(c.name) }}</div>
                 <div class="job-info">
-                  <div class="job-title">Security Guard Positions</div>
+                  <div class="job-title-row">
+                    <span class="job-title">Security Guard</span>
+                    @if (c.jobCount >= 10) {
+                      <span class="badge-hiring">🔥 Actively Hiring</span>
+                    }
+                  </div>
                   <div class="job-company">{{ c.name }}</div>
                   <div class="job-meta">
                     <span class="job-location">📍 {{ location(c) }}</span>
+                    @if (c.employees && c.employees !== '0') {
+                      <span class="job-emp">👤 {{ c.employees }} emp</span>
+                    }
+                    <span class="source-badge" [class]="sourceBadgeClass(c)">{{ sourceBadgeLabel(c) }}</span>
                   </div>
                 </div>
               </div>
               <div class="job-card-right">
+                @if (c.jobCount > 0) {
+                  <span class="openings-badge">{{ c.jobCount }} open</span>
+                }
                 <span class="job-apply-btn">Apply →</span>
               </div>
             </a>
@@ -134,9 +173,10 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
       border-radius: 50px; padding: 6px 20px; font-size: 13px; font-weight: 700;
       color: #e8af4b; letter-spacing: 1px; font-family: var(--font-heading);
     }
+    .hero-count.secondary { color: rgba(255,255,255,0.75); }
     h1 { font-family: var(--font-heading); font-size: clamp(28px,4vw,42px); font-weight: 800; color: white; margin-bottom: 10px; }
     .dir-hero p { font-size: 15px; color: rgba(255,255,255,0.8); margin-bottom: 28px; max-width: 560px; margin-left: auto; margin-right: auto; }
-    .search-bar-wrap { max-width: 700px; margin: 0 auto; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .search-bar-wrap { max-width: 860px; margin: 0 auto; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
     .search-input-wrap { flex: 1; position: relative; min-width: 220px; }
     .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 16px; }
     .search-input-wrap input { width: 100%; padding: 13px 16px 13px 44px; border-radius: 50px; border: none; font-size: 14px; outline: none; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
@@ -154,13 +194,16 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
     .tab-btn.active { color: #18958a; border-bottom-color: #18958a; }
 
     .main { max-width: 1200px; margin: 0 auto; padding: 32px 5%; }
-    .results-row { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 24px; }
+    .results-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; gap: 12px; flex-wrap: wrap; }
     .results-count { font-size: 13px; color: #4a6360; }
     .results-count strong { color: #1a2e2b; }
+    .sort-wrap { display: flex; align-items: center; gap: 8px; }
+    .sort-label { font-size: 13px; color: #4a6360; font-weight: 600; }
+    .sort-select { padding: 7px 14px; border-radius: 8px; border: 1px solid #e8eeec; font-size: 13px; font-weight: 600; background: white; color: #1a2e2b; cursor: pointer; outline: none; box-shadow: none; min-width: 120px; }
 
     /* SKELETON */
-    .skeleton-card { height: 200px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(15,92,85,0.10); animation: pulse 1.5s infinite; }
-    .skeleton-card.job-skeleton { height: 88px; border-radius: 10px; }
+    .skeleton-card { height: 90px; background: white; border-radius: 10px; box-shadow: 0 2px 12px rgba(15,92,85,0.08); animation: pulse 1.5s infinite; margin-bottom: 10px; }
+    .skeleton-card.job-skeleton { height: 90px; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
     /* JOB LISTINGS */
@@ -174,13 +217,20 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
     .job-card:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(15,92,85,0.14); border-color: #18958a; }
     .job-card-left { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; }
     .job-info { min-width: 0; }
-    .job-title { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: #1a2e2b; margin-bottom: 2px; }
-    .job-company { font-size: 13px; color: #18958a; font-weight: 600; margin-bottom: 4px; }
-    .job-meta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .job-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 2px; }
+    .job-title { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: #1a2e2b; }
+    .job-company { font-size: 13px; color: #18958a; font-weight: 600; margin-bottom: 6px; }
+    .job-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .job-location, .job-emp { font-size: 12px; color: #4a6360; }
     .job-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
-    .badge-open { background: #dff2f0; color: #0f5c55; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 50px; }
-    .badge-hiring { background: #fdf0eb; color: #c55a2e; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 50px; }
+
+    /* BADGES */
+    .badge-hiring { background: #fff3e0; color: #c55a2e; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 50px; white-space: nowrap; }
+    .openings-badge { background: #dff2f0; color: #0f5c55; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 50px; white-space: nowrap; }
+    .source-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+    .source-careers { background: #e8f5e9; color: #2e7d32; }
+    .source-website { background: #e3f2fd; color: #1565c0; }
+    .source-indeed { background: #f3e5f5; color: #6a1b9a; }
     .job-apply-btn { font-size: 13px; font-weight: 700; color: white; background: #e8704a; padding: 8px 18px; border-radius: 50px; white-space: nowrap; }
 
     /* COMPANY CARDS */
@@ -221,13 +271,16 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
       .companies-grid { grid-template-columns: 1fr; }
       .job-card { flex-direction: column; align-items: flex-start; }
       .job-card-right { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
+      .results-row { flex-direction: column; align-items: flex-start; }
     }
   `]
 })
 export class CompaniesListComponent implements OnInit {
   companies = signal<Company[]>([]);
   states = signal<string[]>([]);
+  cities = signal<string[]>([]);
   total = signal(0);
+  totalJobs = signal(0);
   totalPages = signal(0);
   currentPage = signal(1);
   loading = signal(true);
@@ -236,7 +289,9 @@ export class CompaniesListComponent implements OnInit {
 
   search = '';
   stateFilter = '';
+  cityFilter = '';
   zipFilter = '';
+  sortOrder = 'jobs';
   private searchTimeout: any;
 
   constructor(private companiesService: CompaniesService) {}
@@ -252,18 +307,30 @@ export class CompaniesListComponent implements OnInit {
     this.load();
   }
 
+  onStateChange() {
+    this.cityFilter = '';
+    this.cities.set([]);
+    if (this.stateFilter) {
+      this.companiesService.getCities(this.stateFilter).subscribe(c => this.cities.set(c));
+    }
+    this.onSearch();
+  }
+
   load() {
     this.loading.set(true);
     this.companiesService.getCompanies({
       state: this.stateFilter,
+      city: this.cityFilter,
       zip: this.zipFilter,
       search: this.search,
       page: this.currentPage(),
       limit: 24,
       hasJobs: this.activeTab() === 'jobs',
+      sort: this.sortOrder === 'az' ? 'az' : undefined,
     }).subscribe(res => {
       this.companies.set(res.data);
       this.total.set(res.total);
+      this.totalJobs.set(res.totalJobs ?? 0);
       this.totalPages.set(res.pages);
       this.loading.set(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -317,8 +384,20 @@ export class CompaniesListComponent implements OnInit {
     return `https://www.indeed.com/jobs?q=${q}&l=${l}`;
   }
 
+  sourceBadgeLabel(c: Company): string {
+    if (c.careersUrl) return 'Careers Page';
+    if (c.website) return 'Website';
+    return 'Indeed';
+  }
+
+  sourceBadgeClass(c: Company): string {
+    if (c.careersUrl) return 'source-badge source-careers';
+    if (c.website) return 'source-badge source-website';
+    return 'source-badge source-indeed';
+  }
+
   ctaLabel(c: Company): string {
-    if (c.careersUrl) return c.jobCount > 0 ? `${c.jobCount} Jobs Available` : '🌐 View Careers';
+    if (c.careersUrl) return c.jobCount > 0 ? `${c.jobCount} Jobs` : '🌐 View Careers';
     if (c.website) return '🌐 Visit Website';
     return 'Search Jobs →';
   }
