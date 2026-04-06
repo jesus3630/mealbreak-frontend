@@ -14,14 +14,14 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
     <!-- HERO -->
     <div class="dir-hero">
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;">
-        <div class="hero-count">{{ total() > 0 ? (total() | number) + ' Guard Companies' : 'Loading...' }}</div>
+        <div class="hero-count">{{ total() > 0 ? (total() | number) + (activeTab() === 'jobs' ? ' Open Positions' : ' Guard Companies') : 'Loading...' }}</div>
       </div>
-      <h1>Guard Company Directory</h1>
-      <p>Browse licensed guard and patrol companies. Find open positions directly on their careers pages.</p>
+      <h1>{{ activeTab() === 'jobs' ? 'Security Guard Jobs' : 'Guard Company Directory' }}</h1>
+      <p>{{ activeTab() === 'jobs' ? 'Browse open positions at licensed security guard companies near you.' : 'Browse licensed guard and patrol companies. Find open positions directly on their careers pages.' }}</p>
       <div class="search-bar-wrap">
         <div class="search-input-wrap">
           <span class="search-icon">🔍</span>
-          <input type="text" placeholder="Search companies..." [(ngModel)]="search" (ngModelChange)="onSearch()" />
+          <input type="text" [placeholder]="activeTab() === 'jobs' ? 'Search jobs or companies...' : 'Search companies...'" [(ngModel)]="search" (ngModelChange)="onSearch()" />
         </div>
         <select [(ngModel)]="stateFilter" (ngModelChange)="onSearch()">
           <option value="">All States</option>
@@ -31,27 +31,69 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
       </div>
     </div>
 
+    <!-- TABS -->
+    <div class="tabs-nav">
+      <div class="tabs-inner">
+        <button class="tab-btn" [class.active]="activeTab()==='jobs'" (click)="switchTab('jobs')">
+          💼 Job Listings
+        </button>
+        <button class="tab-btn" [class.active]="activeTab()==='companies'" (click)="switchTab('companies')">
+          🏢 All Companies
+        </button>
+      </div>
+    </div>
+
     <!-- CONTENT -->
     <div class="main">
-      <div class="tabs-row">
-        <div class="results-count" id="resultsCount">
-          @if (!loading()) {
-            Showing <strong>{{ companies().length }}</strong> of <strong>{{ total() | number }}</strong> companies
-          }
-        </div>
+      <div class="results-row">
+        @if (!loading()) {
+          <span class="results-count">Showing <strong>{{ companies().length }}</strong> of <strong>{{ total() | number }}</strong> {{ activeTab() === 'jobs' ? 'companies with open jobs' : 'companies' }}</span>
+        }
       </div>
 
       @if (loading()) {
         <div class="companies-grid">
-          @for (i of skeleton; track i) { <div class="skeleton-card"></div> }
+          @for (i of skeleton; track i) { <div class="skeleton-card" [class.job-skeleton]="activeTab()==='jobs'"></div> }
         </div>
       } @else if (companies().length === 0) {
         <div class="empty-state">
           <div class="icon">🔍</div>
-          <h3>No companies found</h3>
+          <h3>No {{ activeTab() === 'jobs' ? 'open positions' : 'companies' }} found</h3>
           <p>Try adjusting your search or filters.</p>
         </div>
+      } @else if (activeTab() === 'jobs') {
+        <!-- JOB LISTINGS -->
+        <div class="jobs-list">
+          @for (c of companies(); track c.id) {
+            <a class="job-card" [href]="cardUrl(c)" target="_blank" rel="noopener noreferrer">
+              <div class="job-card-left">
+                <div class="card-logo" [style.background]="logoColor(c.name)">{{ initials(c.name) }}</div>
+                <div class="job-info">
+                  <div class="job-title">Security Guard Positions</div>
+                  <div class="job-company">{{ c.name }}</div>
+                  <div class="job-meta">
+                    <span class="job-location">📍 {{ location(c) }}</span>
+                    @if (c.employees && c.employees !== '0') {
+                      <span class="job-emp">👤 {{ c.employees }} emp</span>
+                    }
+                  </div>
+                </div>
+              </div>
+              <div class="job-card-right">
+                <div class="job-count-badge">
+                  @if (c.jobCount > 0) {
+                    <span class="badge-open">{{ c.jobCount }} open</span>
+                  } @else {
+                    <span class="badge-hiring">Hiring</span>
+                  }
+                </div>
+                <span class="job-apply-btn">Apply →</span>
+              </div>
+            </a>
+          }
+        </div>
       } @else {
+        <!-- COMPANY CARDS -->
         <div class="companies-grid">
           @for (c of companies(); track c.id) {
             <a class="company-card" [href]="cardUrl(c)" target="_blank" rel="noopener noreferrer">
@@ -77,17 +119,18 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
             </a>
           }
         </div>
-        <!-- PAGINATION -->
-        @if (totalPages() > 1) {
-          <div class="pagination">
-            <button class="page-btn arrow" (click)="goPage(currentPage()-1)" [disabled]="currentPage()===1">‹</button>
-            @for (p of pageRange(); track p) {
-              <button class="page-btn" [class.active]="p===currentPage()" (click)="goPage(p)">{{ p }}</button>
-            }
-            <button class="page-btn arrow" (click)="goPage(currentPage()+1)" [disabled]="currentPage()===totalPages()">›</button>
-            <span class="page-info">Page {{ currentPage() }} of {{ totalPages() }}</span>
-          </div>
-        }
+      }
+
+      <!-- PAGINATION -->
+      @if (totalPages() > 1) {
+        <div class="pagination">
+          <button class="page-btn arrow" (click)="goPage(currentPage()-1)" [disabled]="currentPage()===1">‹</button>
+          @for (p of pageRange(); track p) {
+            <button class="page-btn" [class.active]="p===currentPage()" (click)="goPage(p)">{{ p }}</button>
+          }
+          <button class="page-btn arrow" (click)="goPage(currentPage()+1)" [disabled]="currentPage()===totalPages()">›</button>
+          <span class="page-info">Page {{ currentPage() }} of {{ totalPages() }}</span>
+        </div>
       }
     </div>
   `,
@@ -108,13 +151,50 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
     .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 16px; }
     .search-input-wrap input { width: 100%; padding: 13px 16px 13px 44px; border-radius: 50px; border: none; font-size: 14px; outline: none; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
     select, .zip-input { padding: 13px 16px; border-radius: 50px; border: none; font-size: 13px; font-weight: 600; background: white; color: #1a2e2b; cursor: pointer; outline: none; box-shadow: 0 4px 20px rgba(0,0,0,0.15); min-width: 130px; }
+
+    /* TABS NAV */
+    .tabs-nav { background: white; border-bottom: 1px solid #e8eeec; position: sticky; top: 0; z-index: 10; }
+    .tabs-inner { max-width: 1200px; margin: 0 auto; padding: 0 5%; display: flex; gap: 4px; }
+    .tab-btn {
+      padding: 14px 24px; font-family: var(--font-heading); font-size: 13px; font-weight: 700;
+      border: none; background: none; cursor: pointer; color: #4a6360;
+      border-bottom: 3px solid transparent; margin-bottom: -1px; transition: all 0.2s;
+    }
+    .tab-btn:hover { color: #18958a; }
+    .tab-btn.active { color: #18958a; border-bottom-color: #18958a; }
+
     .main { max-width: 1200px; margin: 0 auto; padding: 32px 5%; }
-    .tabs-row { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 24px; }
+    .results-row { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 24px; }
     .results-count { font-size: 13px; color: #4a6360; }
     .results-count strong { color: #1a2e2b; }
-    .companies-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 16px; margin-bottom: 32px; }
+
+    /* SKELETON */
     .skeleton-card { height: 200px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(15,92,85,0.10); animation: pulse 1.5s infinite; }
+    .skeleton-card.job-skeleton { height: 88px; border-radius: 10px; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+    /* JOB LISTINGS */
+    .jobs-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 32px; }
+    .job-card {
+      background: white; border-radius: 10px; padding: 18px 20px;
+      box-shadow: 0 2px 12px rgba(15,92,85,0.08); border: 1px solid #e8eeec;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      text-decoration: none; color: #1a2e2b; transition: all 0.2s;
+    }
+    .job-card:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(15,92,85,0.14); border-color: #18958a; }
+    .job-card-left { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; }
+    .job-info { min-width: 0; }
+    .job-title { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: #1a2e2b; margin-bottom: 2px; }
+    .job-company { font-size: 13px; color: #18958a; font-weight: 600; margin-bottom: 4px; }
+    .job-meta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .job-location, .job-emp { font-size: 12px; color: #4a6360; }
+    .job-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+    .badge-open { background: #dff2f0; color: #0f5c55; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 50px; }
+    .badge-hiring { background: #fdf0eb; color: #c55a2e; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 50px; }
+    .job-apply-btn { font-size: 13px; font-weight: 700; color: white; background: #e8704a; padding: 8px 18px; border-radius: 50px; white-space: nowrap; }
+
+    /* COMPANY CARDS */
+    .companies-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 16px; margin-bottom: 32px; }
     .company-card {
       background: white; border-radius: 12px; padding: 20px;
       box-shadow: 0 4px 20px rgba(15,92,85,0.10); transition: all 0.2s; cursor: pointer;
@@ -135,9 +215,11 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
     .cta-careers { font-size: 12px; font-weight: 700; color: white; background: #e8704a; padding: 4px 10px; border-radius: 50px; white-space: nowrap; }
     .cta-website { font-size: 12px; font-weight: 700; color: white; background: #e8704a; padding: 4px 10px; border-radius: 50px; white-space: nowrap; }
     .cta-indeed { font-size: 12px; font-weight: 700; color: white; background: #18958a; padding: 4px 10px; border-radius: 50px; white-space: nowrap; }
+
     .empty-state { text-align: center; padding: 80px 20px; color: #4a6360; }
     .icon { font-size: 48px; margin-bottom: 16px; }
     .empty-state h3 { font-family: var(--font-heading); font-size: 18px; color: #1a2e2b; margin-bottom: 8px; }
+
     .pagination { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 8px; }
     .page-btn { width: 36px; height: 36px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; background: white; color: #1a2e2b; box-shadow: 0 4px 20px rgba(15,92,85,0.10); }
     .page-btn:hover { background: #18958a; color: white; }
@@ -145,7 +227,11 @@ const COLORS = ['#18958a','#e8704a','#8b5cf6','#06b6d4','#ec4899','#f59e0b','#10
     .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .page-btn.arrow { font-size: 16px; }
     .page-info { font-size: 13px; color: #4a6360; margin: 0 8px; }
-    @media (max-width: 600px) { .companies-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) {
+      .companies-grid { grid-template-columns: 1fr; }
+      .job-card { flex-direction: column; align-items: flex-start; }
+      .job-card-right { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
+    }
   `]
 })
 export class CompaniesListComponent implements OnInit {
@@ -155,6 +241,7 @@ export class CompaniesListComponent implements OnInit {
   totalPages = signal(0);
   currentPage = signal(1);
   loading = signal(true);
+  activeTab = signal<'jobs' | 'companies'>('jobs');
   skeleton = [1,2,3,4,5,6,7,8];
 
   search = '';
@@ -169,16 +256,28 @@ export class CompaniesListComponent implements OnInit {
     this.load();
   }
 
+  switchTab(tab: 'jobs' | 'companies') {
+    this.activeTab.set(tab);
+    this.currentPage.set(1);
+    this.load();
+  }
+
   load() {
     this.loading.set(true);
-    this.companiesService.getCompanies({ state: this.stateFilter, zip: this.zipFilter, search: this.search, page: this.currentPage(), limit: 24 })
-      .subscribe(res => {
-        this.companies.set(res.data);
-        this.total.set(res.total);
-        this.totalPages.set(res.pages);
-        this.loading.set(false);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      });
+    this.companiesService.getCompanies({
+      state: this.stateFilter,
+      zip: this.zipFilter,
+      search: this.search,
+      page: this.currentPage(),
+      limit: 24,
+      hasJobs: this.activeTab() === 'jobs',
+    }).subscribe(res => {
+      this.companies.set(res.data);
+      this.total.set(res.total);
+      this.totalPages.set(res.pages);
+      this.loading.set(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   }
 
   onSearch() {
